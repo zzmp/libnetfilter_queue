@@ -4,9 +4,9 @@
 
 use libc::*;
 use std::mem;
-
 use error::*;
-use queue::QueueBuilder;
+use queue::{Queue, PacketHandler};
+use message::Payload;
 use lock::NFQ_LOCK as LOCK;
 
 use ffi::*;
@@ -44,7 +44,7 @@ impl Handle {
 
         let ptr = unsafe { nfq_open() };
         if ptr.is_null() {
-            Err(error(Reason::OpenHandle, "Failed to allocate andle", None))
+            Err(error(Reason::OpenHandle, "Failed to allocate handle", None))
         } else {
             Ok(Handle{ ptr: ptr })
         }
@@ -76,17 +76,11 @@ impl Handle {
         }
     }
 
-    /// Begin to build a new Queue
-    ///
-    /// `data` will be available to the queue's callback as it processes each message.
-    ///
-    /// Example:
-    /// ```ignore
-    /// struct Void; // pass no data to the callback
-    /// let queue_builder = handle.queue_builder(Void);
-    /// ```
-    pub fn queue_builder<A>(&mut self, data: A) -> QueueBuilder<A> {
-        QueueBuilder::new(self.ptr, data)
+    /// Create a new Queue
+    pub fn queue<F: PacketHandler>(&mut self,
+                                   queue_number: u16,
+                                   handler: F) -> Result<Box<Queue<F>>, Error> {
+        Queue::new(self.ptr, queue_number as uint16_t, handler)
     }
 
     /// Start listening using any attached queues
@@ -117,9 +111,9 @@ impl Handle {
     ///
     /// This will only listen on queues attached with `queue_builder`.
     /// This fn behaves like `start` except that `length` is determined by the size_of the type, `P`.
-    /// For example, to parse `IPHeader`, use `start_sized_to_payload<IPHeader>()`.
-    pub fn start_sized_to_payload<P>(&mut self) {
-        let size = mem::size_of::<P>();
-        self.start(size as u16)
+    /// For example, to parse `IPHeader`, use `start_sized<IPHeader>()`.
+    pub fn start_sized<P: Payload>(&mut self) {
+        let bytes = mem::size_of::<P>() as u16;
+        self.start(bytes * 8)
     }
 }

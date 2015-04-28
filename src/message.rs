@@ -7,7 +7,6 @@ use std::mem;
 use std::ptr::null;
 use std::net::Ipv4Addr;
 use num::traits::PrimInt;
-
 use error::*;
 use util::*;
 use ffi::*;
@@ -62,6 +61,10 @@ pub struct Message<'a> {
     /// A raw pointer to the packet data
     pub ptr: *mut nfq_data,
     /// The `Message` header
+    ///
+    /// A verdict cannot be set without the packet's id
+    /// parsed from the header.
+    /// For convenience, the header is always parsed into the message.
     pub header: &'a Header
 }
 

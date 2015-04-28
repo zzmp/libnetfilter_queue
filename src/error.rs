@@ -1,7 +1,6 @@
 use libc::c_int;
 use std::error::Error as Base;
 use std::fmt;
-
 use ffi::nfq_errno;
 
 #[derive(Debug)]
@@ -12,9 +11,9 @@ pub enum Reason {
     CreateQueue,
     SetQueueMode,
     SetQueueMaxlen,
+    SetVerdict,
     GetHeader,
     GetPayload,
-    Verdict
 }
 
 pub struct Error {

@@ -18,7 +18,6 @@ mod lock;
 pub mod handle;
 pub mod queue;
 pub mod message;
-pub mod verdict;
 
-#[cfg(test)]
-mod test;
+//#[cfg(test)]
+//mod test;
