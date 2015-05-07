@@ -24,7 +24,10 @@ pub enum ProtocolFamily {
 /// A handle into NFQueue
 ///
 /// This is needed for library setup.
-pub struct Handle { ptr: *mut nfq_handle }
+pub struct Handle {
+    ptr: *mut nfq_handle,
+    processing: bool
+}
 
 impl Drop for Handle {
     fn drop(&mut self) {
@@ -46,7 +49,7 @@ impl Handle {
         if ptr.is_null() {
             Err(error(Reason::OpenHandle, "Failed to allocate handle", None))
         } else {
-            Ok(Handle{ ptr: ptr })
+            Ok(Handle{ ptr: ptr, processing: true })
         }
     }
 
@@ -83,6 +86,13 @@ impl Handle {
         Queue::new(self.ptr, queue_number as uint16_t, handler)
     }
 
+    /// Stop listening after the next packet
+    ///
+    /// Because we use a blocking receive, we wait for the next packet, then exit the queue.
+    pub fn stop(&mut self) {
+        self.processing = false;
+    }
+
     /// Start listening using any attached queues
     ///
     /// This will only listen on queues attached with `queue_builder`.
@@ -101,6 +111,9 @@ impl Handle {
                 match recv(fd, buffer, length as u64, 0) {
                     rv if rv >=0 => { nfq_handle_packet(self.ptr, buffer as *mut c_char, rv as i32); },
                     _ => { break; }
+                }
+                if !self.processing {
+                    break;
                 }
             }
 
