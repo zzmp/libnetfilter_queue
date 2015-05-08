@@ -8,6 +8,7 @@ use error::*;
 use queue::{Queue, PacketHandler};
 use message::Payload;
 use lock::NFQ_LOCK as LOCK;
+use std::sync::atomic::{AtomicBool, Ordering, ATOMIC_BOOL_INIT};
 
 use ffi::*;
 
@@ -37,6 +38,8 @@ impl Drop for Handle {
         }
     }
 }
+
+pub static mut stop_all_handles : AtomicBool = ATOMIC_BOOL_INIT;
 
 impl Handle {
     /// Open a new handle to NFQueue
@@ -112,7 +115,7 @@ impl Handle {
                     rv if rv >=0 => { nfq_handle_packet(self.ptr, buffer as *mut c_char, rv as i32); },
                     _ => { break; }
                 }
-                if !self.processing {
+                if !self.processing || stop_all_handles.load(Ordering::SeqCst) {
                     break;
                 }
             }
