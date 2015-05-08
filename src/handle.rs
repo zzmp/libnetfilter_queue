@@ -39,6 +39,7 @@ impl Drop for Handle {
     }
 }
 
+// Stops all the queues  and cleans up in preparation for quit
 pub static mut stop_all_handles : AtomicBool = ATOMIC_BOOL_INIT;
 
 impl Handle {
