@@ -4,10 +4,12 @@
 
 use libc::*;
 use std::mem;
+use error;
 use error::*;
 use queue::{Queue, PacketHandler};
 use message::Payload;
 use lock::NFQ_LOCK as LOCK;
+use errno::errno;
 
 use ffi::*;
 
@@ -90,7 +92,7 @@ impl Handle {
     /// This will only listen on queues attached with `queue_builder`.
     /// `length` determines the amount of a packet to grab from the queue at a time, in bits.
     /// If you are using `queue::Queue::CopyMode(SIZE)` it must match `SIZE`.
-    pub fn start(&mut self, length: u16) {
+    pub fn start(&mut self, length: u16) -> Result<(), Error> {
         unsafe {
             // TODO: Get rid of malloc
             let buffer: *mut c_void = malloc(length as u64);
@@ -101,12 +103,18 @@ impl Handle {
 
             loop {
                 match recv(fd, buffer, length as u64, 0) {
-                    rv if rv >=0 => { nfq_handle_packet(self.ptr, buffer as *mut c_char, rv as i32); },
-                    _ => { break; }
+                    rv if rv >=0 => { 
+                        nfq_handle_packet(self.ptr, buffer as *mut c_char, length as i32);
+                    },
+                    _ => {
+                        free(buffer as *mut c_void);
+                        let e = errno();
+                        // trim() because as_str() is unstable
+                        let err = error::error(error::Reason::GetPayload, format!("{}", e).trim(), Some(e.0 as i32));
+                        return Err(err)
+                    }
                 }
             }
-
-            free(buffer as *mut c_void);
         }
     }
 
@@ -115,7 +123,7 @@ impl Handle {
     /// This will only listen on queues attached with `queue_builder`.
     /// This fn behaves like `start` except that `length` is determined by the size_of the type, `P`.
     /// For example, to parse `IPHeader`, use `start_sized<IPHeader>()`.
-    pub fn start_sized<P: Payload>(&mut self) {
+    pub fn start_sized<P: Payload>(&mut self) -> Result<(), Error> {
         let bytes = mem::size_of::<P>() as u16;
         // netlink header (128 bits) + payload
         self.start(128 + bytes * 8)

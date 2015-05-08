@@ -5,6 +5,7 @@
 #![deny(missing_docs)]
 
 extern crate libc;
+extern crate errno;
 extern crate num;
 #[macro_use]
 extern crate lazy_static;
