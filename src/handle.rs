@@ -8,7 +8,6 @@ use error::*;
 use queue::{Queue, PacketHandler};
 use message::Payload;
 use lock::NFQ_LOCK as LOCK;
-use std::sync::atomic::{AtomicBool, Ordering, ATOMIC_BOOL_INIT};
 
 use ffi::*;
 
@@ -26,8 +25,7 @@ pub enum ProtocolFamily {
 ///
 /// This is needed for library setup.
 pub struct Handle {
-    ptr: *mut nfq_handle,
-    processing: bool
+    ptr: *mut nfq_handle
 }
 
 impl Drop for Handle {
@@ -38,9 +36,6 @@ impl Drop for Handle {
         }
     }
 }
-
-// Stops all the queues  and cleans up in preparation for quit
-pub static mut stop_all_handles : AtomicBool = ATOMIC_BOOL_INIT;
 
 impl Handle {
     /// Open a new handle to NFQueue
@@ -53,7 +48,7 @@ impl Handle {
         if ptr.is_null() {
             Err(error(Reason::OpenHandle, "Failed to allocate handle", None))
         } else {
-            Ok(Handle{ ptr: ptr, processing: true })
+            Ok(Handle{ ptr: ptr })
         }
     }
 
@@ -90,13 +85,6 @@ impl Handle {
         Queue::new(self.ptr, queue_number as uint16_t, handler)
     }
 
-    /// Stop listening after the next packet
-    ///
-    /// Because we use a blocking receive, we wait for the next packet, then exit the queue.
-    pub fn stop(&mut self) {
-        self.processing = false;
-    }
-
     /// Start listening using any attached queues
     ///
     /// This will only listen on queues attached with `queue_builder`.
@@ -115,9 +103,6 @@ impl Handle {
                 match recv(fd, buffer, length as u64, 0) {
                     rv if rv >=0 => { nfq_handle_packet(self.ptr, buffer as *mut c_char, rv as i32); },
                     _ => { break; }
-                }
-                if !self.processing || stop_all_handles.load(Ordering::SeqCst) {
-                    break;
                 }
             }
 
