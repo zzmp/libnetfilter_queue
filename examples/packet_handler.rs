@@ -23,7 +23,7 @@ struct Decider;
 
 impl PacketHandler for Decider {
     #[allow(non_snake_case)]
-    fn handle(&mut self, hq: *mut QueueHandle, message: Result<&Message, &Error>) -> i32 {
+    fn handle(&mut self, hq: QueueHandle, message: Result<&Message, &Error>) -> i32 {
         match message {
             Ok(m) => {
                 let _ = Verdict::set_verdict(hq, m.header.id(), Verdict::Accept, 0, null());
