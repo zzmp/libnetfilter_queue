@@ -3,10 +3,7 @@
 //! Analagous to <http://netfilter.org/projects/libnetfilter_queue/doxygen/group__Parsing.html>
 
 use libc::*;
-use std::mem;
 use std::ptr::null;
-use std::net::Ipv4Addr;
-use num::traits::PrimInt;
 use error::*;
 use util::*;
 use ffi::*;
@@ -14,45 +11,6 @@ pub use ffi::nfqnl_msg_packet_hdr as Header;
 
 /// Structs impl'ing `Payload` must be sized correctly for the payload data that mill be transmuted to it
 pub trait Payload {}
-
-#[allow(dead_code)]
-#[allow(missing_docs)]
-/// A `Payload` to fetch and parse an IP packet header
-pub struct IPHeader {
-    pub version_and_header_raw: u8,
-    pub dscp_raw: u8,
-    pub total_length_raw: u16,
-    pub id_raw: u16,
-    pub flags_and_offset_raw: u16,
-    pub ttl_raw: u8,
-    pub protocol_raw: u8,
-    pub checksum_raw: u16,
-    pub saddr_raw: u32,
-    pub daddr_raw: u32
-}
-
-impl IPHeader {
-    /// Parse the source address
-    pub fn saddr(&self) -> Ipv4Addr {
-        addr_to_ipv4(&self.saddr_raw)
-    }
-
-    /// Parse the destination address
-    pub fn daddr(&self) -> Ipv4Addr {
-        addr_to_ipv4(&self.daddr_raw)
-    }
-}
-
-#[inline]
-fn addr_to_ipv4(src: &u32) -> Ipv4Addr {
-    let octets: [u8; 4] = unsafe { mem::transmute(*src) };
-    Ipv4Addr::new(u8::from_be(octets[0]),
-                  u8::from_be(octets[1]),
-                  u8::from_be(octets[2]),
-                  u8::from_be(octets[3]))
-}
-
-impl Payload for IPHeader {}
 
 /// The packet message
 pub struct Message<'a> {
@@ -87,16 +45,6 @@ impl<'a> Message<'a> {
             ptr: ptr,
             header: header
         })
-    }
-
-    /// Parse the `IPHeader` from the message
-    ///
-    /// When parsing `IPHeader` from a message, the `Queue`'s `CopyMode` and the `Handle` should be sized to the `IPHeader`.
-    /// The best way to do this is with the `queue_builder.set_copy_mode_sized_to_payload`
-    /// and `handle.start_sized_to_payload` methods.
-    /// See `examples/get_addrs.rs`.
-    pub unsafe fn ip_header(&self) -> Result<&IPHeader, Error> {
-        self.payload::<IPHeader>()
     }
 
     /// Parse a sized `Payload` from the message

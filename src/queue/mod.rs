@@ -30,7 +30,10 @@ pub enum CopyMode {
     Packet(u16)
 }
 
-
+pub enum Brake {
+    Brake = -1,
+    Continue = 0
+}
 
 extern fn queue_callback<F: PacketHandler>(qh: *mut nfq_q_handle,
                                            nfmsg: *mut nfgenmsg,
@@ -141,7 +144,7 @@ pub trait PacketHandler {
     /// Handle a packet from the queue
     ///
     /// `Verdict`s must be set using the `set_verdict` fn.
-    fn handle(&mut self, hq: QueueHandle, message: Result<&Message, &Error>) -> i32;
+    fn handle(&mut self, hq: QueueHandle, message: Result<&Message, &Error>) -> Brake;
 }
 
 /// An abstraction over `PacketHandler` for simple handling that needs only a `Verdict`
@@ -154,13 +157,13 @@ pub trait VerdictHandler {
 
 #[allow(non_snake_case)]
 impl<V> PacketHandler for V where V: VerdictHandler {
-    fn handle(&mut self, hq: QueueHandle, message: Result<&Message, &Error>) -> i32 {
+    fn handle(&mut self, hq: QueueHandle, message: Result<&Message, &Error>) -> Brake {
         let NULL: *const c_uchar = null();
         match message {
             Ok(m) => { let _ = Verdict::set_verdict(hq, m.header.id(), self.decide(m), 0, NULL); },
             Err(_) => ()
         }
-        0
+        Brake::Continue
     }
 }
 

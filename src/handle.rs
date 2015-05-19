@@ -102,10 +102,8 @@ impl Handle {
             let fd = nfq_fd(self.ptr);
 
             loop {
-                println!("{}", length);
                 match recv(fd, buffer, 4096 as u64, 0) {
                     rv if rv >=0 => {
-                        println!("Received: {}", rv);
                         nfq_handle_packet(self.ptr, buffer as *mut c_char, rv as i32);
                     },
                     _ => {
